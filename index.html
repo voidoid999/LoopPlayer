@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LoopPlayer - A/B Audio Looping Tool</title>
+
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="app">
+        <h1>LoopPlayer</h1>
+
+        <div class="card">
+            <label class="file-picker">
+                <span>Select Audio File</span>
+                <input
+                    type="file"
+                    id="audioFile"
+                    accept=".mp3,.wav,.m4a,.flac,audio/*"
+                />
+            </label>
+
+            <div class="controls">
+                <button id="playBtn">Play</button>
+                <button id="pauseBtn">Pause</button>
+            </div>
+
+            <div class="time-row">
+                <span id="currentTime">00:00</span>
+                <span>/</span>
+                <span id="duration">00:00</span>
+            </div>
+
+            <div class="seek-container">
+                <div id="loopMarkers" class="loop-markers">
+                    <div id="loopRegion" class="loop-region hidden"></div>
+
+                    <div id="markerA" class="loop-marker marker-a hidden"></div>
+                    <div id="markerB" class="loop-marker marker-b hidden"></div>
+                </div>
+
+                <input
+                    type="range"
+                    id="seekSlider"
+                    min="0"
+                    max="100"
+                    value="0"
+                />
+            </div>
+
+            <div class="speed-control">
+                <label>Playback Speed</label>
+                <div id="speedButtons" class="speed-buttons"></div>
+            </div>
+
+            <!-- <div class="speed-control">
+                <label for="speedSelect">Speed</label>
+                <select id="speedSelect">
+                    <option value="0.50">0.50x</option>
+                    <option value="0.55">0.55x</option>
+                    <option value="0.60">0.60x</option>
+                    <option value="0.65">0.65x</option>
+                    <option value="0.70">0.70x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="0.80">0.80x</option>
+                    <option value="0.85">0.85x</option>
+                    <option value="0.90">0.90x</option>
+                    <option value="0.95">0.95x</option>
+                    <option value="1" selected>1.0x</option>
+                    <option value="1.25">1.25x</option>
+                </select>
+            </div> -->
+
+            <div class="volume-control">
+                <label for="volumeSlider">
+                    Volume
+                    <span id="volumeValue">100%</span>
+                </label>
+
+                <input
+                    type="range"
+                    id="volumeSlider"
+                    min="0"
+                    max="100"
+                    value="100"
+                />
+            </div>
+
+            <div class="loop-controls">
+                <button id="setABtn">Set A</button>
+                <button id="setBBtn">Set B</button>
+                <button id="clearLoopBtn">Clear Loop</button>
+            </div>
+
+            <div class="loop-info">
+                <div>
+                    <strong>A:</strong>
+                    <span id="aTime">Not Set</span>
+                </div>
+
+                <div>
+                    <strong>B:</strong>
+                    <span id="bTime">Not Set</span>
+                </div>
+            </div>
+
+            <div class="status" id="loopStatus">
+                Looping Disabled
+            </div>
+        </div>
+        <footer>
+            LoopPlayer • Local Audio A/B Looper
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
