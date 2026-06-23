@@ -228,6 +228,10 @@ button:active {
     border-radius: 50%;
 }
 
+.loop-marker.dragging {
+    transform: translateX(-50%) scale(1.2);
+}
+
 .marker-a::after {
     background: #16a34a;
 }
@@ -243,9 +247,14 @@ button:active {
 .loop-region {
     position: absolute;
     top: 3px;
-    height: 4px;
+    height: 6px;
+
     border-radius: 999px;
+
     background: rgba(37, 99, 235, 0.35);
+
+    cursor: grab;
+    pointer-events: auto;
 }
 
 .loop-region.hidden {

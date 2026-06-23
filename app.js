@@ -10,6 +10,8 @@ const volumeValue = document.getElementById("volumeValue");
 const markerA = document.getElementById("markerA");
 const markerB = document.getElementById("markerB");
 const loopRegion = document.getElementById("loopRegion");
+const loopMarkers = document.getElementById("loopMarkers");
+const MIN_LOOP_LENGTH = 0.1;
 
 const setABtn = document.getElementById("setABtn");
 const setBBtn = document.getElementById("setBBtn");
@@ -18,6 +20,9 @@ const clearLoopBtn = document.getElementById("clearLoopBtn");
 const aTimeDisplay = document.getElementById("aTime");
 const bTimeDisplay = document.getElementById("bTime");
 const loopStatus = document.getElementById("loopStatus");
+let draggedMarker = null;
+let draggingRegion = false;
+let regionDragOffset = 0;
 
 const audio = new Audio();
 
@@ -217,3 +222,153 @@ function updateLoopMarkers() {
         loopRegion.classList.add("hidden");
     }
 }
+
+document.addEventListener("keydown", (event) => {
+    if (
+        event.code === "Space" &&
+        !["INPUT", "TEXTAREA", "SELECT"].includes(
+            document.activeElement.tagName
+        )
+    ) {
+        event.preventDefault();
+
+        if (audio.paused) {
+            audio.play();
+        } else {
+            audio.pause();
+        }
+    }
+});
+
+function positionToTime(clientX) {
+    const rect = loopMarkers.getBoundingClientRect();
+
+    let percent =
+        (clientX - rect.left) / rect.width;
+
+    percent = Math.max(0, Math.min(1, percent));
+
+    return percent * audio.duration;
+}
+
+markerA.addEventListener("pointerdown", () => {
+    draggedMarker = "A";
+    markerA.classList.add("dragging");
+});
+
+markerB.addEventListener("pointerdown", () => {
+    draggedMarker = "B";
+    markerB.classList.add("dragging");
+});
+
+document.addEventListener("pointermove", (event) => {
+    if (!draggedMarker) {
+        return;
+    }
+
+    if (!audio.duration) {
+        return;
+    }
+
+    const time = positionToTime(event.clientX);
+
+    if (draggedMarker === "A") {
+        pointA = Math.min(
+            time,
+            pointB - MIN_LOOP_LENGTH
+        );
+
+        aTimeDisplay.textContent =
+            formatTime(pointA);
+    }
+
+    if (draggedMarker === "B") {
+        pointB = Math.max(
+            time,
+            pointA + MIN_LOOP_LENGTH
+        );
+
+        bTimeDisplay.textContent =
+            formatTime(pointB);
+    }
+
+    updateLoopMarkers();
+    updateLoopStatus();
+});
+
+document.addEventListener("pointerup", () => {
+    markerA.classList.remove("dragging");
+    markerB.classList.remove("dragging");
+
+    draggedMarker = null;
+});
+
+loopRegion.style.pointerEvents = "auto";
+loopRegion.style.cursor = "grab";
+
+loopRegion.addEventListener("pointerdown", (event) => {
+    if (
+        pointA === null ||
+        pointB === null ||
+        !audio.duration
+    ) {
+        return;
+    }
+
+    draggingRegion = true;
+
+    const rect =
+        loopMarkers.getBoundingClientRect();
+
+    const clickTime =
+        ((event.clientX - rect.left) / rect.width)
+        * audio.duration;
+
+    regionDragOffset =
+        clickTime - pointA;
+
+    loopRegion.style.cursor = "grabbing";
+});
+
+if (draggingRegion) {
+    const loopLength =
+        pointB - pointA;
+
+    let newA =
+        positionToTime(event.clientX)
+        - regionDragOffset;
+
+    newA = Math.max(0, newA);
+
+    if (
+        newA + loopLength >
+        audio.duration
+    ) {
+        newA =
+            audio.duration - loopLength;
+    }
+
+    pointA = newA;
+    pointB = newA + loopLength;
+
+    aTimeDisplay.textContent =
+        formatTime(pointA);
+
+    bTimeDisplay.textContent =
+        formatTime(pointB);
+
+    updateLoopMarkers();
+
+    return;
+}
+
+document.addEventListener("pointerup", () => {
+    markerA.classList.remove("dragging");
+    markerB.classList.remove("dragging");
+
+    draggedMarker = null;
+
+    draggingRegion = false;
+
+    loopRegion.style.cursor = "grab";
+});
