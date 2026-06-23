@@ -102,64 +102,75 @@ button:active {
     margin-bottom: 14px;
 }
 
+.seek-container {
+    position: relative;
+    margin-bottom: 20px;
+}
+
 #seekSlider {
     width: 100%;
-    margin-bottom: 20px;
 }
 
-.speed-control {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+.loop-markers {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -12px;
+    height: 12px;
+    pointer-events: none;
 }
 
-.speed-control label {
-    font-weight: 600;
+.loop-marker {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    transform: translateX(-50%);
+    cursor: ew-resize;
+    pointer-events: auto;
+    z-index: 10;
+    touch-action: none;
 }
 
-.speed-control select {
-    padding: 8px 10px;
-    border-radius: 8px;
+.loop-marker::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
 }
 
-.loop-controls {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 18px;
+.loop-marker.dragging {
+    transform: translateX(-50%) scale(1.2);
 }
 
-.loop-info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 16px;
-    padding: 12px;
-    background: #f8fafc;
-    border-radius: 10px;
+.loop-marker.dragging::after {
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
 }
 
-.status {
-    text-align: center;
-    padding: 12px;
-    border-radius: 10px;
-    background: #eef2ff;
-    color: #3730a3;
-    font-weight: 600;
+.marker-a::after {
+    background: #16a34a;
 }
 
-.volume-control {
-    margin-bottom: 20px;
+.marker-b::after {
+    background: #dc2626;
 }
 
-.volume-control label {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-weight: 600;
+.loop-region {
+    position: absolute;
+    top: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.35);
+    cursor: grab;
+    pointer-events: auto;
+    touch-action: none;
 }
 
-.volume-control input {
-    width: 100%;
+.loop-region:active {
+    cursor: grabbing;
+}
+
+.hidden {
+    display: none;
 }
 
 .speed-control {
@@ -197,68 +208,43 @@ button:active {
     border-color: #2563eb;
 }
 
-.seek-container {
-    position: relative;
+.volume-control {
     margin-bottom: 20px;
 }
 
-.loop-markers {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: -12px;
-    height: 12px;
-    pointer-events: none;
+.volume-control label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-weight: 600;
 }
 
-.loop-marker {
-    position: absolute;
-    width: 0;
-    height: 12px;
-    transform: translateX(-50%);
+.volume-control input {
+    width: 100%;
 }
 
-.loop-marker::after {
-    content: "";
-    position: absolute;
-    left: -5px;
-    top: 0;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
+.loop-controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
 }
 
-.loop-marker.dragging {
-    transform: translateX(-50%) scale(1.2);
+.loop-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 10px;
 }
 
-.marker-a::after {
-    background: #16a34a;
-}
-
-.marker-b::after {
-    background: #dc2626;
-}
-
-.hidden {
-    display: none;
-}
-
-.loop-region {
-    position: absolute;
-    top: 3px;
-    height: 6px;
-
-    border-radius: 999px;
-
-    background: rgba(37, 99, 235, 0.35);
-
-    cursor: grab;
-    pointer-events: auto;
-}
-
-.loop-region.hidden {
-    display: none;
+.status {
+    text-align: center;
+    padding: 12px;
+    border-radius: 10px;
+    background: #eef2ff;
+    color: #3730a3;
+    font-weight: 600;
 }
 
 footer {
@@ -276,5 +262,9 @@ footer {
     .speed-btn {
         padding: 6px;
         font-size: 0.8rem;
+    }
+
+    .loop-controls {
+        flex-direction: column;
     }
 }
