@@ -257,4 +257,8 @@ footer {
         flex-direction: row;
         gap: 8px;
     }
+
+    .volume-control {
+        display: none;
+    }
 }
