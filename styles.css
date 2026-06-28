@@ -224,7 +224,7 @@ footer {
 
 /* ---------- Mobile ---------- */
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
 
     .card {
         padding: 18px;
