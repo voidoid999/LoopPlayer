@@ -15,6 +15,7 @@
         <h1>LoopPlayer</h1>
 
         <div class="card">
+
             <label class="file-picker">
                 <span>Select Audio File</span>
                 <input
@@ -35,14 +36,17 @@
                 <span id="duration">00:00</span>
             </div>
 
+            <!-- Waveform -->
+            <div class="waveform-container">
+                <canvas
+                    id="waveformCanvas"
+                    width="1000"
+                    height="140">
+                </canvas>
+            </div>
+
+            <!-- Seek -->
             <div class="seek-container">
-                <div id="loopMarkers" class="loop-markers">
-                    <div id="loopRegion" class="loop-region hidden"></div>
-
-                    <div id="markerA" class="loop-marker marker-a hidden"></div>
-                    <div id="markerB" class="loop-marker marker-b hidden"></div>
-                </div>
-
                 <input
                     type="range"
                     id="seekSlider"
@@ -52,29 +56,33 @@
                 />
             </div>
 
+            <!-- Loop Controls -->
+            <div class="loop-controls">
+                <button id="setABtn">Set A</button>
+                <button id="setBBtn">Set B</button>
+                <button id="clearLoopBtn">Clear Loop</button>
+            </div>
+
+            <!-- Loop Times -->
+            <div class="loop-info">
+                <div>
+                    <strong>A:</strong>
+                    <span id="aTime">Not Set</span>
+                </div>
+
+                <div>
+                    <strong>B:</strong>
+                    <span id="bTime">Not Set</span>
+                </div>
+            </div>
+
+            <!-- Playback Speed -->
             <div class="speed-control">
                 <label>Playback Speed</label>
                 <div id="speedButtons" class="speed-buttons"></div>
             </div>
 
-            <!-- <div class="speed-control">
-                <label for="speedSelect">Speed</label>
-                <select id="speedSelect">
-                    <option value="0.50">0.50x</option>
-                    <option value="0.55">0.55x</option>
-                    <option value="0.60">0.60x</option>
-                    <option value="0.65">0.65x</option>
-                    <option value="0.70">0.70x</option>
-                    <option value="0.75">0.75x</option>
-                    <option value="0.80">0.80x</option>
-                    <option value="0.85">0.85x</option>
-                    <option value="0.90">0.90x</option>
-                    <option value="0.95">0.95x</option>
-                    <option value="1" selected>1.0x</option>
-                    <option value="1.25">1.25x</option>
-                </select>
-            </div> -->
-
+            <!-- Volume -->
             <div class="volume-control">
                 <label for="volumeSlider">
                     Volume
@@ -90,28 +98,8 @@
                 />
             </div>
 
-            <div class="loop-controls">
-                <button id="setABtn">Set A</button>
-                <button id="setBBtn">Set B</button>
-                <button id="clearLoopBtn">Clear Loop</button>
-            </div>
-
-            <div class="loop-info">
-                <div>
-                    <strong>A:</strong>
-                    <span id="aTime">Not Set</span>
-                </div>
-
-                <div>
-                    <strong>B:</strong>
-                    <span id="bTime">Not Set</span>
-                </div>
-            </div>
-
-            <div class="status" id="loopStatus">
-                Looping Disabled
-            </div>
         </div>
+
         <footer>
             LoopPlayer • Local Audio A/B Looper
         </footer>

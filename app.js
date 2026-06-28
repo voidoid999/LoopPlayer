@@ -1,407 +1,1244 @@
+// ======================================================
+// LoopPlayer v2
+// ======================================================
+
+// ---------- DOM ----------
+
 const fileInput = document.getElementById("audioFile");
+
 const playBtn = document.getElementById("playBtn");
 const pauseBtn = document.getElementById("pauseBtn");
+
 const seekSlider = document.getElementById("seekSlider");
+
 const currentTimeDisplay = document.getElementById("currentTime");
 const durationDisplay = document.getElementById("duration");
-const speedButtonsContainer = document.getElementById("speedButtons");
-const volumeSlider = document.getElementById("volumeSlider");
-const volumeValue = document.getElementById("volumeValue");
 
-const markerA = document.getElementById("markerA");
-const markerB = document.getElementById("markerB");
-const loopRegion = document.getElementById("loopRegion");
-const loopMarkers = document.getElementById("loopMarkers");
+const speedButtonsContainer =
+    document.getElementById("speedButtons");
 
-const setABtn = document.getElementById("setABtn");
-const setBBtn = document.getElementById("setBBtn");
-const clearLoopBtn = document.getElementById("clearLoopBtn");
+const volumeSlider =
+    document.getElementById("volumeSlider");
 
-const aTimeDisplay = document.getElementById("aTime");
-const bTimeDisplay = document.getElementById("bTime");
-const loopStatus = document.getElementById("loopStatus");
+const volumeValue =
+    document.getElementById("volumeValue");
+
+const setABtn =
+    document.getElementById("setABtn");
+
+const setBBtn =
+    document.getElementById("setBBtn");
+
+const clearLoopBtn =
+    document.getElementById("clearLoopBtn");
+
+const aTimeDisplay =
+    document.getElementById("aTime");
+
+const bTimeDisplay =
+    document.getElementById("bTime");
+
+const canvas =
+    document.getElementById("waveformCanvas");
+
+const ctx =
+    canvas.getContext("2d");
+
+// ======================================================
+// Audio
+// ======================================================
 
 const audio = new Audio();
 
-const MIN_LOOP_LENGTH = 0.1;
+audio.preload = "auto";
+audio.volume = 1;
+audio.playbackRate = 1;
+
+// ======================================================
+// Web Audio
+// ======================================================
+
+const audioContext =
+    new (window.AudioContext ||
+    window.webkitAudioContext)();
+
+let decodedBuffer = null;
+
+// ======================================================
+// Waveform
+// ======================================================
+
+let waveform = [];
+
+const WAVEFORM_SAMPLES = 2000;
+
+// ======================================================
+// Loop
+// ======================================================
 
 let pointA = null;
 let pointB = null;
 
-let draggedMarker = null;
-let draggingRegion = false;
-let regionDragOffset = 0;
+const MIN_LOOP_LENGTH = 0.10;
 
-audio.volume = 1;
-audio.playbackRate = 1;
+// ======================================================
+// Dragging
+// ======================================================
+
+let dragMode = null;
+
+// NONE
+// A
+// B
+// REGION
+
+let dragOffset = 0;
+
+const HIT_RADIUS = 10;
+
+// ======================================================
+// Speed Buttons
+// ======================================================
 
 const speedValues = [];
 
-for (let speed = 0.30; speed <= 1.0001; speed += 0.05) {
-    speedValues.push(Number(speed.toFixed(2)));
+for (
+    let speed = 0.30;
+    speed <= 1.0001;
+    speed += 0.05
+) {
+
+    speedValues.push(
+        Number(speed.toFixed(2))
+    );
+
+}
+
+// ======================================================
+// Utilities
+// ======================================================
+
+function clamp(value, min, max) {
+
+    return Math.min(
+        Math.max(value, min),
+        max
+    );
+
 }
 
 function formatTime(seconds) {
-    if (!isFinite(seconds)) {
+
+    if (!isFinite(seconds))
         return "00:00";
-    }
 
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
+    const mins =
+        Math.floor(seconds / 60);
 
-    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    const secs =
+        Math.floor(seconds % 60);
+
+    return (
+        String(mins).padStart(2, "0") +
+        ":" +
+        String(secs).padStart(2, "0")
+    );
+
 }
 
-function updateLoopStatus() {
-    const enabled =
-        pointA !== null &&
-        pointB !== null &&
-        pointB > pointA;
+function resizeCanvas() {
 
-    loopStatus.textContent = enabled
-        ? "Looping Enabled"
-        : "Looping Disabled";
+    const rect =
+        canvas.getBoundingClientRect();
+
+    const ratio =
+        window.devicePixelRatio || 1;
+
+    canvasWidth()
+
+    canvasHeight()
+
+    canvas.style.width =
+        rect.width + "px";
+
+    canvas.style.height =
+        rect.height + "px";
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    ctx.scale(ratio, ratio);
+
+    render();
+
 }
 
-function clearLoopPoints() {
-    pointA = null;
-    pointB = null;
+window.addEventListener(
+    "resize",
+    resizeCanvas
+);
 
-    aTimeDisplay.textContent = "Not Set";
-    bTimeDisplay.textContent = "Not Set";
+resizeCanvas();
 
-    updateLoopStatus();
-    updateLoopMarkers();
+function canvasWidth() {
+    return canvas.getBoundingClientRect().width;
 }
 
-function updateLoopMarkers() {
-    if (!audio.duration || !isFinite(audio.duration)) {
-        markerA.classList.add("hidden");
-        markerB.classList.add("hidden");
-        loopRegion.classList.add("hidden");
-        return;
-    }
+function canvasHeight() {
+    return canvas.getBoundingClientRect().height;
+}
 
-    if (pointA !== null) {
-        const percent = (pointA / audio.duration) * 100;
+function timeToX(time) {
 
-        markerA.style.left = `${percent}%`;
-        markerA.classList.remove("hidden");
-    } else {
-        markerA.classList.add("hidden");
-    }
+    if (!audio.duration)
+        return 0;
 
-    if (pointB !== null) {
-        const percent = (pointB / audio.duration) * 100;
+    return (
+        time /
+        audio.duration *
+        canvasWidth()
+    );
 
-        markerB.style.left = `${percent}%`;
-        markerB.classList.remove("hidden");
-    } else {
-        markerB.classList.add("hidden");
-    }
+}
 
-    if (
+function xToTime(x) {
+
+    if (!audio.duration)
+        return 0;
+
+    return clamp(
+        x /
+        canvasWidth() *
+        audio.duration,
+        0,
+        audio.duration
+    );
+
+}
+
+function hasLoop() {
+
+    return (
         pointA !== null &&
         pointB !== null &&
         pointB > pointA
+    );
+
+}
+
+function clearLoop() {
+
+    pointA = null;
+    pointB = null;
+
+    aTimeDisplay.textContent =
+        "Not Set";
+
+    bTimeDisplay.textContent =
+        "Not Set";
+
+}
+
+// ======================================================
+// Canvas Helpers
+// ======================================================
+
+function drawVerticalLine(
+    x,
+    color,
+    width = 2
+) {
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+
+    ctx.beginPath();
+
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvasHeight());
+
+    ctx.stroke();
+
+}
+
+function drawLabel(
+    text,
+    x,
+    color
+) {
+
+    ctx.fillStyle = color;
+    ctx.font = "bold 14px Arial";
+
+    ctx.fillText(
+        text,
+        x + 4,
+        16
+    );
+
+}
+
+// ======================================================
+// Waveform Generation
+// ======================================================
+
+async function decodeAudioFile(file) {
+
+    const arrayBuffer =
+        await file.arrayBuffer();
+
+    decodedBuffer =
+        await audioContext.decodeAudioData(
+            arrayBuffer
+        );
+
+    buildWaveform(decodedBuffer);
+
+}
+
+function buildWaveform(buffer) {
+
+    waveform = [];
+
+    const data =
+        buffer.getChannelData(0);
+
+    const blockSize =
+        Math.floor(
+            data.length /
+            WAVEFORM_SAMPLES
+        );
+
+    for (
+        let i = 0;
+        i < WAVEFORM_SAMPLES;
+        i++
     ) {
-        const startPercent =
-            (pointA / audio.duration) * 100;
 
-        const endPercent =
-            (pointB / audio.duration) * 100;
+        let min = 1;
+        let max = -1;
 
-        loopRegion.style.left = `${startPercent}%`;
-        loopRegion.style.width =
-            `${endPercent - startPercent}%`;
+        const start =
+            i * blockSize;
 
-        loopRegion.classList.remove("hidden");
-    } else {
-        loopRegion.classList.add("hidden");
-    }
-}
-
-function setSpeed(speed) {
-    audio.playbackRate = speed;
-
-    document
-        .querySelectorAll(".speed-btn")
-        .forEach((btn) => {
-            btn.classList.toggle(
-                "active",
-                Number(btn.dataset.speed) === speed
+        const end =
+            Math.min(
+                start + blockSize,
+                data.length
             );
+
+        for (
+            let j = start;
+            j < end;
+            j++
+        ) {
+
+            const sample =
+                data[j];
+
+            if (sample < min)
+                min = sample;
+
+            if (sample > max)
+                max = sample;
+
+        }
+
+        waveform.push({
+            min,
+            max
         });
+
+    }
+
 }
 
-function positionToTime(clientX) {
-    const rect = loopMarkers.getBoundingClientRect();
+// ======================================================
+// Canvas Rendering
+// ======================================================
 
-    let percent =
-        (clientX - rect.left) / rect.width;
+function drawBackground() {
 
-    percent = Math.max(0, Math.min(1, percent));
+    ctx.fillStyle = "#fafafa";
 
-    return percent * audio.duration;
+    ctx.fillRect(
+        0,
+        0,
+        canvasWidth(),
+        canvasHeight()
+    );
+
 }
 
-speedValues.forEach((speed) => {
-    const button = document.createElement("button");
+function drawWaveform() {
+
+    if (!waveform.length)
+        return;
+
+    const middle =
+        canvasHeight() / 2;
+
+    const width =
+        canvasWidth() /
+        waveform.length;
+
+    ctx.strokeStyle =
+        "#2563eb";
+
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+
+    for (
+        let i = 0;
+        i < waveform.length;
+        i++
+    ) {
+
+        const x =
+            i * width;
+
+        const top =
+            middle +
+            waveform[i].min *
+            middle *
+            0.9;
+
+        const bottom =
+            middle +
+            waveform[i].max *
+            middle *
+            0.9;
+
+        ctx.moveTo(
+            x,
+            top
+        );
+
+        ctx.lineTo(
+            x,
+            bottom
+        );
+
+    }
+
+    ctx.stroke();
+
+}
+
+function drawLoopRegion() {
+
+    if (!hasLoop())
+        return;
+
+    const left =
+        timeToX(pointA);
+
+    const right =
+        timeToX(pointB);
+
+    ctx.fillStyle =
+        "rgba(37,99,235,0.15)";
+
+    ctx.fillRect(
+        left,
+        0,
+        right - left,
+        canvasHeight()
+    );
+
+}
+
+function drawMarkers() {
+
+    if (pointA !== null) {
+
+        const x =
+            timeToX(pointA);
+
+        drawVerticalLine(
+            x,
+            "#16a34a"
+        );
+
+        drawLabel(
+            "A",
+            x,
+            "#16a34a"
+        );
+
+    }
+
+    if (pointB !== null) {
+
+        const x =
+            timeToX(pointB);
+
+        drawVerticalLine(
+            x,
+            "#dc2626"
+        );
+
+        drawLabel(
+            "B",
+            x,
+            "#dc2626"
+        );
+
+    }
+
+}
+
+function drawPlayhead() {
+
+    if (!audio.duration)
+        return;
+
+    drawVerticalLine(
+        timeToX(
+            audio.currentTime
+        ),
+        "#111",
+        2
+    );
+
+}
+
+function render() {
+
+    drawBackground();
+
+    drawLoopRegion();
+
+    drawWaveform();
+
+    drawMarkers();
+
+    drawPlayhead();
+
+    requestAnimationFrame(
+        render
+    );
+
+}
+
+requestAnimationFrame(
+    render
+);
+
+// ======================================================
+// Audio Loading
+// ======================================================
+
+fileInput.addEventListener(
+    "change",
+    async (event) => {
+
+        const file =
+            event.target.files[0];
+
+        if (!file)
+            return;
+
+        if (
+            audioContext.state ===
+            "suspended"
+        ) {
+            await audioContext.resume();
+        }
+
+        clearLoop();
+
+        audio.src =
+            URL.createObjectURL(file);
+
+        audio.load();
+
+        await decodeAudioFile(file);
+
+        render();
+
+    }
+);
+
+// ======================================================
+// Audio Metadata
+// ======================================================
+
+audio.addEventListener(
+    "loadedmetadata",
+    () => {
+
+        durationDisplay.textContent =
+            formatTime(audio.duration);
+
+        currentTimeDisplay.textContent =
+            "00:00";
+
+        seekSlider.min = 0;
+        seekSlider.max = audio.duration;
+        seekSlider.value = 0;
+
+    }
+);
+
+// ======================================================
+// Playback Updates
+// ======================================================
+
+audio.addEventListener(
+    "timeupdate",
+    () => {
+
+        currentTimeDisplay.textContent =
+            formatTime(
+                audio.currentTime
+            );
+
+        seekSlider.value =
+            audio.currentTime;
+
+        if (hasLoop()) {
+
+            if (audio.currentTime > pointB) {
+
+                audio.currentTime = pointA;
+
+            }
+
+        }
+
+    }
+);
+
+// ======================================================
+// Playback Controls
+// ======================================================
+
+playBtn.addEventListener(
+    "click",
+    () => {
+
+        if (!audio.src)
+            return;
+
+        audio.play();
+
+    }
+);
+
+pauseBtn.addEventListener(
+    "click",
+    () => {
+
+        audio.pause();
+
+    }
+);
+
+// ======================================================
+// Seek Slider
+// ======================================================
+
+seekSlider.addEventListener(
+    "input",
+    () => {
+
+        if (!audio.duration)
+            return;
+
+        audio.currentTime =
+            Number(
+                seekSlider.value
+            );
+
+    }
+);
+
+// ======================================================
+// Playback Speed
+// ======================================================
+
+speedValues.forEach(speed => {
+
+    const button =
+        document.createElement(
+            "button"
+        );
 
     button.type = "button";
-    button.className = "speed-btn";
-    button.dataset.speed = speed;
-    button.textContent = `${speed.toFixed(2)}×`;
+
+    button.className =
+        "speed-btn";
+
+    button.dataset.speed =
+        speed;
+
+    button.textContent =
+        speed.toFixed(2) + "×";
 
     if (speed === 1) {
-        button.classList.add("active");
+        button.classList.add(
+            "active"
+        );
     }
 
-    button.addEventListener("click", () => {
-        setSpeed(speed);
-    });
+    button.addEventListener(
+        "click",
+        () => {
 
-    speedButtonsContainer.appendChild(button);
+            audio.playbackRate =
+                speed;
+
+            document
+                .querySelectorAll(
+                    ".speed-btn"
+                )
+                .forEach(btn =>
+                    btn.classList.remove(
+                        "active"
+                    )
+                );
+
+            button.classList.add(
+                "active"
+            );
+
+        }
+    );
+
+    speedButtonsContainer.appendChild(
+        button
+    );
+
 });
 
-fileInput.addEventListener("change", (event) => {
-    const file = event.target.files[0];
+// ======================================================
+// Volume
+// ======================================================
 
-    if (!file) {
-        return;
+volumeSlider.addEventListener(
+    "input",
+    () => {
+
+        const volume =
+            Number(
+                volumeSlider.value
+            ) / 100;
+
+        audio.volume = volume;
+
+        volumeValue.textContent =
+            volumeSlider.value +
+            "%";
+
     }
+);
 
-    audio.src = URL.createObjectURL(file);
-    audio.load();
+audio.volume =
+    Number(volumeSlider.value) / 100;
 
-    clearLoopPoints();
-});
+volumeValue.textContent =
+    volumeSlider.value + "%";
 
-audio.addEventListener("loadedmetadata", () => {
-    durationDisplay.textContent =
-        formatTime(audio.duration);
-
-    seekSlider.max = audio.duration;
-    seekSlider.value = 0;
-
-    updateLoopMarkers();
-});
-
-audio.addEventListener("timeupdate", () => {
-    currentTimeDisplay.textContent =
-        formatTime(audio.currentTime);
-
-    seekSlider.value = audio.currentTime;
-
-    const loopingEnabled =
-        pointA !== null &&
-        pointB !== null &&
-        pointB > pointA;
-
-    if (
-        loopingEnabled &&
-        audio.currentTime >= pointB
-    ) {
-        audio.currentTime = pointA;
-    }
-});
-
-playBtn.addEventListener("click", () => {
-    if (audio.src) {
-        audio.play();
-    }
-});
-
-pauseBtn.addEventListener("click", () => {
-    audio.pause();
-});
-
-seekSlider.addEventListener("input", () => {
-    audio.currentTime =
-        Number(seekSlider.value);
-});
-
-volumeSlider.addEventListener("input", () => {
-    const volume =
-        Number(volumeSlider.value) / 100;
-
-    audio.volume = volume;
-    volumeValue.textContent =
-        `${volumeSlider.value}%`;
-});
+// ======================================================
+// Loop Controls
+// ======================================================
 
 setABtn.addEventListener("click", () => {
+
+    if (!audio.duration)
+        return;
+
     pointA = audio.currentTime;
+
+    if (
+        pointB !== null &&
+        pointA >= pointB
+    ) {
+        pointB = null;
+        bTimeDisplay.textContent = "Not Set";
+    }
 
     aTimeDisplay.textContent =
         formatTime(pointA);
 
-    updateLoopStatus();
-    updateLoopMarkers();
 });
 
 setBBtn.addEventListener("click", () => {
+
+    if (!audio.duration)
+        return;
+
     pointB = audio.currentTime;
+
+    if (
+        pointA !== null &&
+        pointB <= pointA
+    ) {
+        pointB =
+            pointA +
+            MIN_LOOP_LENGTH;
+    }
+
+    pointB = clamp(
+        pointB,
+        0,
+        audio.duration
+    );
 
     bTimeDisplay.textContent =
         formatTime(pointB);
 
-    updateLoopStatus();
-    updateLoopMarkers();
 });
 
 clearLoopBtn.addEventListener("click", () => {
-    clearLoopPoints();
+
+    clearLoop();
+
 });
 
-document.addEventListener("keydown", (event) => {
-    if (
-        event.code === "Space" &&
-        !["INPUT", "TEXTAREA", "SELECT"].includes(
-            document.activeElement.tagName
-        )
-    ) {
-        event.preventDefault();
+// ======================================================
+// Canvas Helpers
+// ======================================================
 
-        if (!audio.src) {
-            return;
-        }
-
-        if (audio.paused) {
-            audio.play();
-        } else {
-            audio.pause();
-        }
-    }
-});
-
-markerA.addEventListener("pointerdown", () => {
-    if (pointA === null || pointB === null) {
-        return;
-    }
-
-    draggedMarker = "A";
-    markerA.classList.add("dragging");
-});
-
-markerB.addEventListener("pointerdown", () => {
-    if (pointA === null || pointB === null) {
-        return;
-    }
-
-    draggedMarker = "B";
-    markerB.classList.add("dragging");
-});
-
-loopRegion.addEventListener("pointerdown", (event) => {
-    if (
-        pointA === null ||
-        pointB === null ||
-        !audio.duration
-    ) {
-        return;
-    }
-
-    draggingRegion = true;
+function getCanvasX(event) {
 
     const rect =
-        loopMarkers.getBoundingClientRect();
+        canvas.getBoundingClientRect();
 
-    const clickTime =
-        ((event.clientX - rect.left) / rect.width) *
-        audio.duration;
+    return (
+        (event.clientX - rect.left) *
+        canvasWidth() /
+        rect.width
+    );
 
-    regionDragOffset =
-        clickTime - pointA;
+}
 
-    loopRegion.style.cursor = "grabbing";
-});
+function hitTest(x) {
 
-document.addEventListener("pointermove", (event) => {
-    if (!audio.duration) {
-        return;
-    }
+    if (!audio.duration)
+        return null;
 
-    if (draggingRegion) {
-        const loopLength =
-            pointB - pointA;
+    if (pointA !== null) {
 
-        let newA =
-            positionToTime(event.clientX) -
-            regionDragOffset;
-
-        newA = Math.max(0, newA);
+        const ax =
+            timeToX(pointA);
 
         if (
-            newA + loopLength >
-            audio.duration
+            Math.abs(x - ax) <=
+            HIT_RADIUS
         ) {
-            newA =
-                audio.duration - loopLength;
+            return "A";
         }
 
-        pointA = newA;
-        pointB = newA + loopLength;
+    }
 
-        aTimeDisplay.textContent =
-            formatTime(pointA);
+    if (pointB !== null) {
 
-        bTimeDisplay.textContent =
-            formatTime(pointB);
+        const bx =
+            timeToX(pointB);
 
-        updateLoopMarkers();
-        updateLoopStatus();
+        if (
+            Math.abs(x - bx) <=
+            HIT_RADIUS
+        ) {
+            return "B";
+        }
 
+    }
+
+    if (hasLoop()) {
+
+        const ax =
+            timeToX(pointA);
+
+        const bx =
+            timeToX(pointB);
+
+        if (
+            x > ax &&
+            x < bx
+        ) {
+            return "REGION";
+        }
+
+    }
+
+    return null;
+
+}
+
+// ======================================================
+// Pointer Down
+// ======================================================
+
+canvas.addEventListener(
+    "pointerdown",
+    (event) => {
+
+        event.preventDefault();
+
+        if (!audio.duration)
+            return;
+
+        canvas.setPointerCapture(
+            event.pointerId
+        );
+
+        const x =
+            getCanvasX(event);
+
+        const hit =
+            hitTest(x);
+
+        if (hit) {
+
+            dragMode = hit;
+
+            if (
+                hit === "REGION"
+            ) {
+
+                dragOffset =
+                    xToTime(x) -
+                    pointA;
+
+            }
+
+            return;
+
+        }
+
+        audio.currentTime =
+            xToTime(x);
+
+    }
+);
+
+// ======================================================
+// Pointer Move
+// ======================================================
+
+canvas.addEventListener(
+    "pointermove",
+    (event) => {
+
+        event.preventDefault();
+
+        const x =
+            getCanvasX(event);
+
+        const time =
+            xToTime(x);
+
+        if (!dragMode) {
+
+            const hit =
+                hitTest(x);
+
+            canvas.style.cursor =
+                hit
+                    ? (
+                        hit ===
+                        "REGION"
+                    )
+                        ? "grab"
+                        : "ew-resize"
+                    : "pointer";
+
+            return;
+
+        }
+
+        // ---------- Drag A ----------
+
+        if (dragMode === "A") {
+
+            if (
+                pointB !== null
+            ) {
+
+                pointA = clamp(
+                    time,
+                    0,
+                    pointB -
+                    MIN_LOOP_LENGTH
+                );
+
+            } else {
+
+                pointA = clamp(
+                    time,
+                    0,
+                    audio.duration
+                );
+
+            }
+
+            aTimeDisplay.textContent =
+                formatTime(
+                    pointA
+                );
+
+            return;
+
+        }
+
+        // ---------- Drag B ----------
+
+        if (dragMode === "B") {
+
+            if (
+                pointA !== null
+            ) {
+
+                pointB = clamp(
+                    time,
+                    pointA +
+                    MIN_LOOP_LENGTH,
+                    audio.duration
+                );
+
+            } else {
+
+                pointB = clamp(
+                    time,
+                    0,
+                    audio.duration
+                );
+
+            }
+
+            bTimeDisplay.textContent =
+                formatTime(
+                    pointB
+                );
+
+            return;
+
+        }
+
+        // ---------- Drag Region ----------
+
+        if (
+            dragMode ===
+            "REGION"
+        ) {
+
+            const length =
+                pointB - pointA;
+
+            let newA =
+                time -
+                dragOffset;
+
+            newA = clamp(
+                newA,
+                0,
+                audio.duration -
+                length
+            );
+
+            pointA = newA;
+            pointB =
+                newA + length;
+
+            aTimeDisplay.textContent =
+                formatTime(
+                    pointA
+                );
+
+            bTimeDisplay.textContent =
+                formatTime(
+                    pointB
+                );
+
+        }
+
+    }
+);
+
+canvas.addEventListener(
+    "pointerup",
+    () => {
+
+        canvas.releasePointerCapture(event.pointerId);
+
+        dragMode = null;
+
+        canvas.style.cursor =
+            "pointer";
+
+    }
+);
+
+canvas.addEventListener(
+    "pointercancel",
+    () => {
+
+        dragMode = null;
+
+    }
+);
+
+// ======================================================
+// Keyboard Shortcuts
+// ======================================================
+
+document.addEventListener("keydown", (event) => {
+
+    const tag = document.activeElement.tagName;
+
+    if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT"
+    ) {
         return;
     }
 
-    if (!draggedMarker) {
-        return;
+    switch (event.code) {
+
+        case "Space":
+
+            event.preventDefault();
+
+            if (!audio.src)
+                return;
+
+            if (audio.paused)
+                audio.play();
+            else
+                audio.pause();
+
+            break;
+
+        case "KeyA":
+
+            if (!audio.duration)
+                return;
+
+            pointA = audio.currentTime;
+
+            if (
+                pointB !== null &&
+                pointA >= pointB
+            ) {
+                pointB = null;
+                bTimeDisplay.textContent =
+                    "Not Set";
+            }
+
+            aTimeDisplay.textContent =
+                formatTime(pointA);
+
+            break;
+
+        case "KeyB":
+
+            if (!audio.duration)
+                return;
+
+            pointB = audio.currentTime;
+
+            if (
+                pointA !== null &&
+                pointB <= pointA
+            ) {
+                pointB =
+                    pointA +
+                    MIN_LOOP_LENGTH;
+            }
+
+            pointB = clamp(
+                pointB,
+                0,
+                audio.duration
+            );
+
+            bTimeDisplay.textContent =
+                formatTime(pointB);
+
+            break;
+
+        case "Delete":
+
+            clearLoop();
+
+            break;
+
     }
 
-    const time =
-        positionToTime(event.clientX);
-
-    if (
-        draggedMarker === "A" &&
-        pointB !== null
-    ) {
-        pointA = Math.min(
-            time,
-            pointB - MIN_LOOP_LENGTH
-        );
-
-        aTimeDisplay.textContent =
-            formatTime(pointA);
-    }
-
-    if (
-        draggedMarker === "B" &&
-        pointA !== null
-    ) {
-        pointB = Math.max(
-            time,
-            pointA + MIN_LOOP_LENGTH
-        );
-
-        bTimeDisplay.textContent =
-            formatTime(pointB);
-    }
-
-    updateLoopMarkers();
-    updateLoopStatus();
 });
 
-document.addEventListener("pointerup", () => {
-    markerA.classList.remove("dragging");
-    markerB.classList.remove("dragging");
+// ======================================================
+// Double Click
+// ======================================================
 
-    draggedMarker = null;
+canvas.addEventListener(
+    "dblclick",
+    () => {
 
-    draggingRegion = false;
+        if (pointA === null)
+            return;
 
-    loopRegion.style.cursor = "grab";
-});
+        audio.currentTime = pointA;
 
-updateLoopStatus();
-updateLoopMarkers();
+    }
+);
+
+// ======================================================
+// Touch
+// ======================================================
+
+canvas.style.touchAction = "none";
+
+// ======================================================
+// Initialization
+// ======================================================
+
+function initialize() {
+
+    currentTimeDisplay.textContent =
+        "00:00";
+
+    durationDisplay.textContent =
+        "00:00";
+
+    aTimeDisplay.textContent =
+        "Not Set";
+
+    bTimeDisplay.textContent =
+        "Not Set";
+
+    volumeValue.textContent =
+        volumeSlider.value + "%";
+
+    audio.volume =
+        Number(volumeSlider.value) / 100;
+
+    audio.playbackRate = 1;
+
+}
+
+initialize();
+
+// ======================================================
+// Playback End
+// ======================================================
+
+audio.addEventListener(
+    "ended",
+    () => {
+
+        seekSlider.value = 0;
+
+        currentTimeDisplay.textContent =
+            "00:00";
+
+    }
+);
+
+console.log(
+    "LoopPlayer v2 Ready"
+);

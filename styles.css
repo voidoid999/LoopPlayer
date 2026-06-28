@@ -17,7 +17,7 @@ body {
 
 .app {
     width: 100%;
-    max-width: 520px;
+    max-width: 560px;
 }
 
 h1 {
@@ -33,6 +33,8 @@ h1 {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
+/* ---------- File Picker ---------- */
+
 .file-picker {
     display: flex;
     flex-direction: column;
@@ -44,6 +46,8 @@ h1 {
 .file-picker input {
     padding: 10px;
 }
+
+/* ---------- Playback Controls ---------- */
 
 .controls {
     display: flex;
@@ -58,11 +62,11 @@ button {
     padding: 12px;
     cursor: pointer;
     font-size: 1rem;
-    transition: transform 0.15s ease, opacity 0.15s ease;
+    transition: 0.15s ease;
 }
 
 button:hover {
-    opacity: 0.9;
+    opacity: 0.92;
 }
 
 button:active {
@@ -94,87 +98,68 @@ button:active {
     color: white;
 }
 
+/* ---------- Time ---------- */
+
 .time-row {
     display: flex;
     justify-content: center;
     gap: 8px;
-    font-size: 1.1rem;
-    margin-bottom: 14px;
+    font-size: 1.05rem;
+    margin-bottom: 18px;
 }
 
+/* ---------- Waveform ---------- */
+
+.waveform-container {
+    width: 100%;
+    height: 70px;
+    margin-bottom: 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background: #fafafa;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+#waveformCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* ---------- Seek ---------- */
+
 .seek-container {
-    position: relative;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
 }
 
 #seekSlider {
     width: 100%;
+    cursor: pointer;
 }
 
-.loop-markers {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: -12px;
-    height: 12px;
-    pointer-events: none;
+/* ---------- Loop ---------- */
+
+.loop-controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
 }
 
-.loop-marker {
-    position: absolute;
-    width: 18px;
-    height: 18px;
-    transform: translateX(-50%);
-    cursor: ew-resize;
-    pointer-events: auto;
-    z-index: 10;
-    touch-action: none;
+.loop-info {
+    display: flex;
+    justify-content: space-between;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 22px;
+    font-size: 0.95rem;
 }
 
-.loop-marker::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-}
-
-.loop-marker.dragging {
-    transform: translateX(-50%) scale(1.2);
-}
-
-.loop-marker.dragging::after {
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
-}
-
-.marker-a::after {
-    background: #16a34a;
-}
-
-.marker-b::after {
-    background: #dc2626;
-}
-
-.loop-region {
-    position: absolute;
-    top: 6px;
-    height: 6px;
-    border-radius: 999px;
-    background: rgba(37, 99, 235, 0.35);
-    cursor: grab;
-    pointer-events: auto;
-    touch-action: none;
-}
-
-.loop-region:active {
-    cursor: grabbing;
-}
-
-.hidden {
-    display: none;
-}
+/* ---------- Speed ---------- */
 
 .speed-control {
-    margin-bottom: 20px;
+    margin-bottom: 22px;
 }
 
 .speed-control label {
@@ -190,12 +175,13 @@ button:active {
 }
 
 .speed-btn {
-    padding: 8px;
+    padding: 9px;
     border: 1px solid #d1d5db;
-    background: white;
     border-radius: 8px;
+    background: white;
     cursor: pointer;
     font-size: 0.85rem;
+    transition: 0.15s ease;
 }
 
 .speed-btn:hover {
@@ -208,63 +194,61 @@ button:active {
     border-color: #2563eb;
 }
 
+/* ---------- Volume ---------- */
+
 .volume-control {
-    margin-bottom: 20px;
+    margin-top: 6px;
 }
 
 .volume-control label {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     margin-bottom: 8px;
     font-weight: 600;
 }
 
 .volume-control input {
     width: 100%;
+    cursor: pointer;
 }
 
-.loop-controls {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 18px;
-}
-
-.loop-info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 16px;
-    padding: 12px;
-    background: #f8fafc;
-    border-radius: 10px;
-}
-
-.status {
-    text-align: center;
-    padding: 12px;
-    border-radius: 10px;
-    background: #eef2ff;
-    color: #3730a3;
-    font-weight: 600;
-}
+/* ---------- Footer ---------- */
 
 footer {
     text-align: center;
-    margin-top: 16px;
+    margin-top: 18px;
     color: #64748b;
     font-size: 0.9rem;
 }
 
+/* ---------- Mobile ---------- */
+
 @media (max-width: 480px) {
+
+    .card {
+        padding: 18px;
+    }
+
+    .waveform-container {
+        height: 120px;
+    }
+
     .speed-buttons {
         grid-template-columns: repeat(3, 1fr);
     }
 
     .speed-btn {
-        padding: 6px;
         font-size: 0.8rem;
+        padding: 8px;
     }
 
     .loop-controls {
         flex-direction: column;
+    }
+
+    .loop-info {
+        flex-direction: column;
+        gap: 8px;
     }
 }
