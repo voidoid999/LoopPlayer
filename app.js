@@ -154,9 +154,9 @@ function resizeCanvas() {
     const ratio =
         window.devicePixelRatio || 1;
 
-    canvasWidth()
+    canvas.width = rect.width * ratio;
 
-    canvasHeight()
+    canvas.height = rect.height * ratio;
 
     canvas.style.width =
         rect.width + "px";
